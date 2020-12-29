@@ -83,7 +83,7 @@ std::vector<matrix<rgb_pixel>> jitter_image(
 class FeatureExtraction {
 public:
 
-	static void TrainAndSerializeDataset(std::vector<cv::Mat> image) try
+	static void TrainAndSerializeDataset(std::vector<cv::Mat> image, std::vector<string> labels) try
 	{
 		// The first thing we are going to do is load all our models.  First, since we need to
 		// find faces in the image we will need a face detector:
@@ -107,8 +107,10 @@ public:
 		// and centered.
 		std::cout << "[FTREXTRC]: Looping through all faces and creating matrices" << std::endl;
 		std::vector<matrix<rgb_pixel>> faces;
+		int i = 0;
 		for (auto img : imgs){
-			std::cout << "[FTREXTRC]: Processing new image; Total images" << imgs.size << std::endl;
+			i++;
+			std::cout << "[FTREXTRC]: Processing new image; " << i << " of images" << imgs.size() << std::endl;
 			for (auto face : detector(img))
 			{
 				auto shape = sp(img, face);
@@ -131,9 +133,13 @@ public:
 		// identify if a pair of images are from the same person or from different people.  
 
 		// Add more elements to our saved encodings
-		std::cout << "Serializing 128D vectors" << std::endl;
+		std::cout << "[FTREXTRC]: Serializing 128D vectors" << std::endl;
 		std::vector<matrix<float,0,1>> face_descriptors = net(faces);
 		serialize("faceDesc.dat") << face_descriptors;
+
+		std::cout << "[FTREXTRC]: Serializing labels" << std::endl;
+		serialize("faceDescLabels.dat") << labels;
+		std::cout << "[FTREXTRC]: Feature extraction finished" << std::endl;
 	}
 	catch (std::exception& e)
 	{

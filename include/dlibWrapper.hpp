@@ -99,10 +99,16 @@ static void Analyse(cv::Mat image) try
 
     std::cout << "[dLibWrap]: Deserializing 128d vector" << std::endl;
     std::vector<matrix<float,0,1>> face_descriptors;
-    deserialize("faceDesc.dat") >> face_descriptors;
+    deserialize("../dnnmodel/faceDesc.dat") >> face_descriptors;
+
+    std::cout << "[dLibWrap]: Deserializing labels" << std::endl;
+    std::vector<string> strLabels;
+    deserialize("../dnnmodel/faceDescLabels.dat") >> strLabels;
+
 
     dlib::cv_image<bgr_pixel> img(image);
     // Display the raw image on the screen
+    std::cout << "[dLibWrap]: Displaying raw image" << std::endl;
     image_window win(img);
 
 
@@ -132,7 +138,8 @@ static void Analyse(cv::Mat image) try
     // In this 128D vector space, images from the same person will be close to each other
     // but vectors from different people will be far apart.  So we can use these vectors to
     // identify if a pair of images are from the same person or from different people.  
-    face_descriptors.insert(face_descriptors.end(), net(faces).begin(), net(faces).end());
+    std::vector<matrix<float,0,1>> face_desc = net(faces);
+    face_descriptors.insert(face_descriptors.end(), face_desc.begin(), face_desc.end());
 
 
     // In particular, one simple thing we can do is face clustering.  This next bit of code
@@ -147,8 +154,9 @@ static void Analyse(cv::Mat image) try
             // the distance between two face descriptors is less than 0.6, which is the
             // decision threshold the network was trained to use.  Although you can
             // certainly use any other threshold you find useful.
-            if (length(face_descriptors[i]-face_descriptors[j]) < 0.6)
-                edges.push_back(sample_pair(i,j));
+            auto difference = length(face_descriptors[i]-face_descriptors[j]);
+            if (difference < 0.6)
+                edges.push_back(sample_pair(i,j, difference));
         }
     }
     std::vector<unsigned long> labels;
@@ -169,7 +177,14 @@ static void Analyse(cv::Mat image) try
             if (cluster_id == labels[j])
                 temp.push_back(faces[j]);
         }
-        win_clusters[cluster_id].set_title("face cluster " + cast_to_string(cluster_id));
+        std::string outputLabel;
+        if(cluster_id < strLabels.size()){
+            outputLabel = strLabels[cluster_id];
+        } else {
+            outputLabel = "Unknown";
+        }
+        std::cout << "[dLibWrap]: Label for image: " << outputLabel << std::endl;
+        win_clusters[cluster_id].set_title("face cluster " + outputLabel);
         win_clusters[cluster_id].set_image(tile_images(temp));
     }
 
